@@ -1,5 +1,5 @@
 angular.module('example')
-  .directive('inbox', function inbox () {
+  .directive('inbox', function InboxDrctv () {
     'use strict';
 
     return {
@@ -10,7 +10,6 @@ angular.module('example')
       controllerAs: 'inbox',
 
       controller: function (InboxFactory) {
-        
         this.messages = [];
 
         this.goToMessage = function (id) {
