@@ -1,0 +1,138 @@
+*{margin: 0; padding: 0}
+.wrapper{
+	width: 100%;
+	float: left;
+	/*background-color: yellow;*/
+	/*height: 500px;*/
+	/*padding-bottom: 20px;*/
+}
+.header{
+	width: 100%;
+	float:left;
+	height: 60px;
+	background-color: #f2f2f2;
+}
+
+.navigation{
+	background-color:#555;
+	float: left;
+	height: 35px;
+	/*margin-bottom: 10px;*/
+	width: 100%
+}
+
+.navbar-nav{
+	/*background-color: #ccc*/
+}
+/*.navigation>ul{
+	float: left;
+	width: 70%;
+	margin-left: 15%;
+	height: 100%;
+}
+.navigation>ul li{
+	float: left;
+	width: auto;
+	padding: 0 10px;
+	height: 100%;
+	list-style-type: none;
+	line-height: 35px;
+	color: #fff;
+	text-transform: uppercase;
+}
+.navigation>ul li:hover{
+	background-color: maroon;
+}*/
+.container-fluid{
+	width: 75%;
+}
+.navbar-toggle{float: left;
+	margin-left: 10px
+}
+.nav>li>a{
+	padding-right:10px;
+	padding-left:10px;
+}
+.contentwrapper{
+	width: 70%;
+	margin-left: 15%;
+	float: left;
+	/*background-color: green;*/
+	/*height: 100px;	*/
+	padding-bottom: 10px;
+	border: 1px solid #ccc;
+	background-color:rgb(244, 244, 244);
+    padding-left: 8px;
+}
+.contentwrapper>.left{
+	float: left;
+	width: 70%;
+}
+.contentwrapper>.right{
+	float: left;
+	width: 30%;
+}
+
+.contentwrapper .divisions{
+	width: 32%;	
+	float:left;
+	height: 300px;
+	margin:5px 0;
+	border: 1px solid #000;
+	border-radius: 5px;
+	margin-right: 1%;
+}
+
+.contentwrapper .divisions .labels>ul{
+	width: 100%;
+	float:left;
+	list-style-type: none;
+}
+
+.contentwrapper .divisions .labels>ul li{
+	width: 90%;
+	float:left;
+	list-style-type: none;
+	padding-left: 5%
+}
+
+.contentwrapper .heading{
+	height: 20px;
+	border-bottom:1px solid #000;
+	width: 100%;
+	text-align: center;
+}
+
+#add{
+	width: 99%;
+	float: left;
+	height: 40px;
+	background-color: white
+}
+
+.left>.small{
+	height: 150px !important;
+}
+.right>.small{
+	height: 123px !important
+}
+
+.contentwrapper>.right>.divisions{
+	width: 90%;
+	margin-left: 5%;
+	float: left;
+}
+.footer{
+	background-color: #555;
+	height: 50px;
+	float: left;
+	width: 100%;
+	margin-top: 20px;
+}
+
+@media screen and (max-width: 1130px) {
+.container-fluid{width:100%;}
+}
+@media screen and (max-width: 770px) {
+.headerWrap{position: relative; width: 100%; float: left; top: 0}
+}
