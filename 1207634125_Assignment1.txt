@@ -1,0 +1,272 @@
+#!/usr/bin/python2.7
+#
+# Interface for the assignement
+#
+
+# Please change the names in Tester file if u r using
+#RATINGS_TABLE = 'ratings'
+#RANGE_TABLE_PREFIX = 'par'
+#RROBIN_TABLE_PREFIX = 'rr'
+#DB PASSWORD =vineel
+
+import psycopg2
+
+DATABASE_NAME = 'dds_assgn1'
+num_seg=0;
+num_rr=0;
+def getopenconnection(user='postgres', password='vineel', dbname='dds_assgn1'):
+    return psycopg2.connect("dbname='" + dbname + "' user='" + user + "' host='localhost' password='" + password + "'")
+
+
+def loadratings(ratingstablename, ratingsfilepath, openconnection):
+
+    def insert_rows():
+        r='';
+        iterator=0;
+        with open(ratingsfilepath,'r') as f:
+            for row in f:
+                iterator=iterator+1
+                x=row.split('::')
+                r=r+'INSERT INTO %s VALUES (%s, %s, %s)'%(ratingstablename,x[0],x[1],x[2]) +';'
+                if(iterator%5000==0):
+                    cur_load.execute(r);
+                    r='';
+        cur_load.execute(r);
+
+            #cur_load.execute("COPY "+ ratingstablename +" FROM %s (DELIMITER('::')" %ratingsfilepath)
+        #print 'completed inserting'
+        print "done";
+    ratingstablename=ratingstablename.lower()
+    cur_load = openconnection.cursor()
+    cur_load.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name ='%s')" %ratingstablename)
+    res= cur_load.fetchone()[0]
+    #print res;
+    if(res==False):
+        #print 'creating'
+        cur_load.execute('CREATE TABLE '+ ratingstablename +'(UserID int,MovieID int,Rating numeric(2,1))')
+        insert_rows()
+        #cur_load.close()
+    else:
+        #print 'already exists'
+        cur_load.execute('TRUNCATE TABLE '+ ratingstablename +'')
+        insert_rows()
+        #cur_load.close()
+
+
+def rangepartition(ratingstablename, numberofpartitions, openconnection):
+    #print 'in range'
+    cur_range=openconnection.cursor()
+    #print ratingstablename;
+    N=numberofpartitions;
+    global num_seg
+    num_seg=N
+    #print openconnection
+    cur_range.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name ='master')")
+    res= cur_range.fetchone()[0]
+    #print res;
+    if(res==False):
+        cur_range.execute('CREATE TABLE master (UserID int,MovieID int,Rating numeric(2,1))')
+    else:
+        cur_range.execute('DROP TABLE master cascade');
+        cur_range.execute('CREATE TABLE master (UserID int,MovieID int,Rating numeric(2,1))')
+    no_par=5.0/N
+    x=0.0;
+    i=1;
+    #print no_par;
+    #print x;
+    while x<5:
+        name='par'+ str(i);
+        #print name;
+        #cur_range.execute('CREATE TABLE %s (UserID int,MovieID int,Rating numeric(2,1))'%('par'+ str(i)))
+        if(x==0):
+            #print "CREATE TABLE %s (CHECK ( rating >= %s AND rating <=%s )) INHERITS (master)' %(name,x,(x+no_par))"
+            cur_range.execute('CREATE TABLE %s (CHECK ( rating >= %s AND rating <=%s )) INHERITS (master)' %(name,x,(x+no_par)))
+            cur_range.execute ("INSERT INTO %s select * from ratings where rating >= %s AND rating <=%s" %(name,x,(x+no_par)))
+        else:
+            cur_range.execute('CREATE TABLE %s (CHECK ( rating > %s AND rating <=%s )) INHERITS (master)' %(name,x,(x+no_par)))
+            cur_range.execute ("INSERT INTO %s select * from ratings where rating > %s AND rating <=%s" %(name,x,(x+no_par)))
+                #print 'no_par> %s and no_par<=%s' %(x,(x+no_par))
+        x=x+no_par;
+        i=i+1
+
+
+def roundrobinpartition(ratingstablename, numberofpartitions, openconnection):
+    cur_rr=openconnection.cursor();
+    cur_rr_ins=openconnection.cursor();
+    numberofpartitions=numberofpartitions-1;
+    global num_rr;
+    num_rr=numberofpartitions;
+    ######################
+    cur_rr.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name ='master1')")
+    res= cur_rr.fetchone()[0]
+    #print res;
+    if(res==False):
+        cur_rr.execute('CREATE TABLE master1 (UserID int,MovieID int,Rating numeric(2,1))')
+    else:
+        cur_rr.execute('DROP TABLE master1 cascade');
+        cur_rr.execute('CREATE TABLE master1 (UserID int,MovieID int,Rating numeric(2,1))')
+	#print str(numberofpartitions) + 'vin'
+    while(numberofpartitions>=0):
+        name='rr'+str(numberofpartitions);
+        #print name;
+        cur_rr.execute('CREATE TABLE %s (UserID int,MovieID int,Rating numeric(2,1)) INHERITS (master1)' %(name))
+        numberofpartitions = numberofpartitions-1
+		
+    cur_rr.execute('SELECT * from ratings');
+    numberofpartitions=num_rr
+    rriterator=0;
+    rrquery='';
+    m=0
+    for row in cur_rr:
+        rriterator=rriterator+1;
+        name_tab='rr'+str(m);
+        rrquery= rrquery +'INSERT INTO %s VALUES (%s, %s, %s)'%(name_tab,str(row[0]),str(row[1]),str(row[2])) +';'
+        m=m+1
+        if(m>numberofpartitions):
+            m=0
+        if(rriterator%5000==0):
+            cur_rr_ins.execute(rrquery)
+            rrquery='';
+    cur_rr_ins.execute(rrquery)
+    #print 'final vlue' +str(m)
+    cur_rr.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name ='vrrpointer')" )
+    res= cur_rr.fetchone()[0]
+    #print res;
+    if(res==False):
+        cur_rr.execute('CREATE TABLE vrrpointer (valuepointer int)');
+        cur_rr.execute('INSERT into vrrpointer values(%s)' %(m))
+    else:
+        cur_rr.execute('DROP TABLE vrrpointer')
+        cur_rr.execute('CREATE TABLE vrrpointer (valuepointer int)');
+        cur_rr.execute('INSERT into vrrpointer values(%s)' %(m))
+
+def roundrobininsert(ratingstablename, userid, itemid, rating, openconnection):
+    cur_rrins=openconnection.cursor();
+    cur_rrins.execute('select valuepointer from vrrpointer');
+    get_data=cur_rrins.fetchall()
+    #print 'b4rpow'
+    for row in get_data :
+        par_val = row[0]
+        #print str(par_val) +'kk'
+    #print 'after'
+    name= 'rr'+ str(par_val)
+    #print 'inserting into ' +name
+    cur_rrins.execute('insert into '+ name+' values(%s,%s,%s)' %(userid,itemid,rating))
+    par_val=par_val+1;
+    #print 'num_rr here'+ str(num_rr)
+    if(par_val>=num_rr):
+        par_val=0;
+
+    cur_rrins.execute('update vrrpointer set valuepointer = %s'%(par_val))
+
+
+def rangeinsert(ratingstablename, userid, itemid, rating, openconnection):
+    cur_rangeins=openconnection.cursor()
+    #print num_seg
+    newrating=rating
+    newrating=float(newrating);
+    no_par=5.0/num_seg
+    x=0.0;
+    i=1;
+    #print no_par;
+    #print x;
+    while x<5:
+        name='par'+ str(i);
+        #print name;
+        #cur_range.execute('CREATE TABLE %s (UserID int,MovieID int,Rating numeric(2,1))'%('par'+ str(i)))
+        if(x==0):
+            if(newrating >=x):
+                if(newrating<=x+no_par):
+                    insertname=name
+        else:
+            if(newrating>x):
+                if(newrating<=x+no_par):
+                    insertname=name
+        x=x+no_par;
+        i=i+1
+    cur_rangeins.execute ("INSERT INTO %s values(%s,%s,%s)" %(insertname,userid,itemid,newrating))
+
+
+
+def create_db(dbname):
+    """
+    We create a DB by connecting to the default user and database of Postgres
+    The function first checks if an existing database exists for a given name, else creates it.
+    :return:None
+    """
+    # Connect to the default database
+    con = getopenconnection(dbname='dds_assgn1')
+    con.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+    cur = con.cursor()
+
+    # Check if an existing database with the same name exists
+    cur.execute('SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname=\'%s\'' % (dbname,))
+    count = cur.fetchone()[0]
+    if count == 0:
+        cur.execute('CREATE DATABASE %s' % (dbname,))  # Create the database
+    else:
+        print 'A database named {0} already exists'.format(dbname)
+
+    # Clean up
+    cur.close()
+    con.close()
+
+
+# Middleware
+def before_db_creation_middleware():
+    # Use it if you want to
+    pass
+
+def deletepartitionsandexit(openconnection):
+    cur_del=openconnection.cursor();
+    cur_del.execute('DROP TABLE master cascade');
+    cur_del.execute('DROP TABLE master1 cascade');
+    cur_del.execute('DROP TABLE vrrpointer');
+
+
+
+def after_db_creation_middleware(databasename):
+    pass
+
+
+def before_test_script_starts_middleware(openconnection, databasename):
+    # Use it if you want to
+    pass
+
+
+def after_test_script_ends_middleware(openconnection, databasename):
+    # Use it if you want to
+    pass
+
+
+if __name__ == '__main__':
+    try:
+
+        # Use this function to do any set up before creating the DB, if any
+        before_db_creation_middleware()
+
+        create_db(DATABASE_NAME)
+
+        # Use this function to do any set up after creating the DB, if any
+        after_db_creation_middleware(DATABASE_NAME)
+
+        with getopenconnection() as con:
+            # Use this function to do any set up before I starting calling your functions to test, if you want to
+            before_test_script_starts_middleware(con, DATABASE_NAME)
+
+            # Here is where I will start calling your functions to test them. For example,
+            loadratings('Ratings','E:\Study\ASU\SEM2\DDS\\asst\\asst-1\ml-10M100K\\test_data.dat', con)
+            rangepartition('ratings',5,con)
+            rangeinsert('ratings','81','0','0',con)
+            roundrobinpartition('ratings',5,con);
+            roundrobininsert('ratings',191,19,3,con)
+            # ###################################################################################
+            # Anything in this area will not be executed as I will call your functions directly
+            # so please add whatever code you want to add in main, in the middleware functions provided "only"
+            # ###################################################################################
+
+            # Use this function to do any set up after I finish testing, if you want to
+            after_test_script_ends_middleware(con, DATABASE_NAME)
+
+    except Exception as detail:
+        print "OOPS! This is the error ==> ", detail
