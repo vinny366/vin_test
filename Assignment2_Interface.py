@@ -18,9 +18,6 @@ def RangeQuery(ratingsTableName, ratingMinValue, ratingMaxValue, openconnection)
     results_rr=cur_rrQ.fetchone();
     rrcounter=results_rr[0]-1;
 
-    print counter;
-    print rrcounter;
-
     open('RangeQueryOut.txt', 'w').close()
     while counter >= 0:
         print 'here';
