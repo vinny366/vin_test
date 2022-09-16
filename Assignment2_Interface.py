@@ -1,6 +1,6 @@
 #!/usr/bin/python2.7
 #
-# Assignment2 Interface
+# Assignment2 Interface changed by ANUSHRI
 #
 import psycopg2
 import os
